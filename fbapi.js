@@ -1,8 +1,10 @@
 /*
 #example
 var fbapp = new fbapi();
-fbapp.init.appid = "000000000000000";
+fbapp.init.appid = "571724289556131";
+
 fbapp.start();
+
 */
 function fbapi(){
 	var that=this;
@@ -20,13 +22,10 @@ function fbapi(){
 		pageid			:	'',
 		scope			:	'user_about_me,user_likes,publish_stream',
 		photoid			:	0,
-		share_i_maxuser	:	5,	//最大邀請數
-		share_i_fds		:	'',
-		share_i_num		:	0,	//最少邀請數
 		errMsg			:	{'errMsg_auth':'使用者取消登入或授權不完全','errMsg_unfeed':'取消發佈','errMsgUnLogin':'使用者取消登入','errMsgNotFans':'使用者不是粉絲'},
 		access_token	:	''
 	}
-	,this.start = function(){
+	,this.start = function(nextFunc){
 		
 		$.ajaxSetup({ cache: true });
 		$.getScript('//connect.facebook.net/zh_TW/all.js', function(){
@@ -39,6 +38,7 @@ function fbapi(){
 			});
 			//that.getaccesstoken();
 			//FB.getLoginStatus(that.updateStatusCallback);
+			if(typeof nextFunc!='undefined' && typeof nextFunc == 'function') { nextFunc(); }
 		});
 	}
 	,this.updateStatusCallback = function(s){
@@ -182,6 +182,7 @@ function fbapi(){
 	,this.photo = function(obj,nextFunc,closeFunc){
 		/*obj = {
 				access_token	:	fbapp.init.access_token
+				,status			: 'success'
 				,url			:	'img url'
 				,message		:	'test test test'
 				,tags			:	[{tag_uid: fbid ,tag_text: name ,x:50,y:50},{tag_uid: fbid ,tag_text: name ,x:50,y:50}]
