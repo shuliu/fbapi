@@ -1,257 +1,283 @@
-/*
-#example
-var fbapp = new fbapi();
-fbapp.init.appid = "571724289556131";
+(function() {
+  'use strict';
+  var root;
 
-fbapp.start();
+  root = typeof exports !== "undefined" && exports !== null ? exports : this;
 
-*/
-function fbapi(){
-	var that=this;
-	if( $('#fb-root').is()==false ){
-		$('body').prepend('<div id="fb-root"></div>');
-	}
+  root.fbapi = (function() {
+    var that;
 
-	this.init = {
-		debug			:	false,
-		id				:	'',
-		me				:	[],
-		fds				:	[],
-		channelURL		:	'',
-		appid			:	'',
-		pageid			:	'',
-		scope			:	'user_about_me,user_likes,publish_stream',
-		photoid			:	0,
-		errMsg			:	{'errMsg_auth':'使用者取消登入或授權不完全','errMsg_unfeed':'取消發佈','errMsgUnLogin':'使用者取消登入','errMsgNotFans':'使用者不是粉絲'},
-		access_token	:	''
-	}
-	,this.start = function(nextFunc){
-		
-		$.ajaxSetup({ cache: true });
-		$.getScript('//connect.facebook.net/zh_TW/all.js', function(){
-			FB.init({
-				appId: that.init.appid,
-				channelURL : that.init.channelURL, // channel.html file
-				status: true,
-				cookie: true,
-				xfbml: true
-			});
-			//that.getaccesstoken();
-			//FB.getLoginStatus(that.updateStatusCallback);
-			if(typeof nextFunc!='undefined' && typeof nextFunc == 'function') { nextFunc(); }
-		});
-	}
-	,this.updateStatusCallback = function(s){
-		that.init.debug == true && console_log( s );
-	}
-	,this.login = function(nextFunc){
-		FB.login(function(response){
-			if( response.authResponse ){
-				that.init.access_token = response.authResponse.accessToken;
-				that.init.id = response.authResponse.userID;
-				if(typeof nextFunc!='undefined' && typeof nextFunc == 'function') { nextFunc(response); }
-			}else{
-				that.init.debug == true && console_log( that.init.errMsg.errMsgUnLogin );
-			}
-		},{scope:that.init.scope});
-	}
-	,this.getaccesstoken = function(nextFunc){
-		FB.getLoginStatus(function(response) {
-			if (response.status === 'connected') {
-				that.init.access_token = response.authResponse.accessToken;
-				that.init.id = response.authResponse.userID;
-				that.init.debug == true && console_log( response );
-				if(typeof nextFunc!='undefined' && typeof nextFunc == 'function') { nextFunc(response); }
-			} else if (response.status === 'not_authorized') {
-				that.init.debug == true && console_log( that.init.errMsg.errMsg_auth );
-			} else {
-				that.init.debug == true && console_log( that.init.errMsg.errMsgUnLogin );
-			}
-		 });
-	}
-	,this.getMe = function(nextFunc,closeFunc){
-		FB.api('/me/',function(response){
-			that.init.debug == true && console_log( response );
-			if( response ){
-				that.init.me = response;
-				if(typeof nextFunc!='undefined' && typeof nextFunc == 'function') { nextFunc(response); }
-			}else{
-				if( typeof closeFunc != 'undefined' && typeof closeFunc == 'function' ) { closeFunc(response); }
-				that.init.debug == true && console_log( that.init.errMsg.errMsg_auth );
-			}
-		});
-	}
-	,this.getFds = function(limit,nextFunc,closeFunc){
-		FB.api('/me/friends/'+( (typeof limit=='number')?'?limit='+limit : '' ),function(response){
-			that.init.debug == true && console_log( response );
-			if( response ){
-				that.init.fds = response.data;
-				if(typeof nextFunc!='undefined' && typeof nextFunc == 'function') { nextFunc(response); }
-			}else{
-				if( typeof closeFunc != 'undefined' && typeof closeFunc == 'function' ) { closeFunc(response); }
-				that.init.debug == true && console_log( that.init.errMsg.errMsg_auth );
-			}
-		});
-	}
-	,this.fql = function(query,nextFunc,closeFunc){
-		// var query = 'SELECT name, uid FROM user WHERE uid IN (SELECT uid2 FROM friend WHERE uid1=me() ) ORDER BY name DESC';
-		var publish = {
-			method			:	'fql.query',
-			query			:	query
-		}
-		FB.api(publish,function(response){
-			if( response ){
-				if(typeof nextFunc!='undefined' && typeof nextFunc == 'function') { nextFunc(response); }
-			}else{
-				if( typeof closeFunc != 'undefined' && typeof closeFunc == 'function' ) { closeFunc(response); }
-				that.init.debug == true && console_log( that.init.errMsg.errMsg_auth );
-			}
-		});
-	}
-	//place search
-	,this.getPlace = function(search,nextFunc,closeFunc){
-		FB.api('/search?type=place&q='+search,function(response){
-			that.init.debug == true && console_log( response );
-			if( response.data.length > 0 ){
-				if(typeof nextFunc!='undefined' && typeof nextFunc == 'function') { nextFunc(response); }
-			}else{
-				if( typeof closeFunc != 'undefined' && typeof closeFunc == 'function' ) { closeFunc(response); }
-				that.init.debug == true && console_log( that.init.errMsg.errMsgNotFans );
-			}
-		});
-	}
-	,this.isFans = function(nextFunc,closeFunc){
-		FB.api('/me/likes/'+that.init.pageid,function(response){
-			that.init.debug == true && console_log( response );
-			if( response.data.length > 0 ){
-				if(typeof nextFunc!='undefined' && typeof nextFunc == 'function') { nextFunc(response); }
-			}else{
-				if( typeof closeFunc != 'undefined' && typeof closeFunc == 'function' ) { closeFunc(response); }
-				that.init.debug == true && console_log( that.init.errMsg.errMsgNotFans );
-			}
-		});
-	}
-	//FB api post data
-	,this.autopost = function(data,nextFunc,closeFunc){
-		/*
-		//data,json中不須加上 access_token 但必須先取得 access_token (toLogin本身會取得)
-		{
-			message			:	'發佈測試message'
-			,name			:	'發佈測試title'
-			,description	:	'發佈測試des'
-			,caption		:	'發佈測試cap'
-			,link			:	location.href
-			,picture		:	'http://www.....'
-		}
-		*/
-		var dd = data;
-		dd.access_token = that.init.access_token
-		$.ajax({
-			type: 'POST',
-			url: 'https://graph.facebook.com/' + that.init.id + '/feed?method=post',
-			data: dd,
-			success: function (data) {
-				that.init.debug == true && console_log( data );
-				if(typeof data.error != 'undefined'){//失敗
-					that.init.debug == true && console_log( that.init.errMsg.errMsgUnLogin );
-					if(typeof closeFunc!='undefined' && typeof closeFunc == 'function') { closeFunc(data); }
-				}else{//成功
-					if(typeof nextFunc!='undefined' && typeof nextFunc == 'function') { nextFunc(data); }
-				}
-			},
-			error: function (data) {
-				that.init.debug == true && console_log( that.init.errMsg.errMsgUnLogin );
-				if(typeof closeFunc!='undefined' && typeof closeFunc == 'function') { closeFunc(data); }
-			},
-			dataType: "jsonp"
-		});
-	}
-	,this.feed = function(obj,nextFunc,closeFunc){
+    that = fbapi;
 
-		FB.api('feed','post',obj,function(response){
-			that.init.debug == true && console_log( response );
-			if( response ){
-				if( typeof nextFunc != 'undefined' && typeof nextFunc == 'function' ) { nextFunc(response); }
-			}else{
-				if( typeof closeFunc != 'undefined' && typeof closeFunc == 'function' ) { closeFunc(response); }
-				that.init.debug == true && console_log( that.init.errMsg.errMsg_unfeed );
-			}
-		});
+    fbapi.prototype.init = {
+      debug: false,
+      id: '',
+      me: [],
+      friends: [],
+      channelURL: '',
+      appid: '',
+      pageid: '',
+      scope: 'user_about_me,user_likes',
+      photoid: 0,
+      errMsg: {
+        'errMsg_auth': '使用者取消登入或授權不完全',
+        'errMsg_unfeed': '取消發佈',
+        'errMsgUnLogin': '使用者取消登入',
+        'errMsgNotFans': '使用者不是粉絲'
+      },
+      access_token: ''
+    };
 
-	}
-	,this.photo = function(obj,nextFunc,closeFunc){
-		/*obj = {
-				access_token	:	fbapp.init.access_token
-				,status			: 'success'
-				,url			:	'img url'
-				,message		:	'test test test'
-				,tags			:	[{tag_uid: fbid ,tag_text: name ,x:50,y:50},{tag_uid: fbid ,tag_text: name ,x:50,y:50}]
-				,place			:	'place code number'
-			}*/
-		FB.api('/me/photos','post',obj,function(response){
-			if(response) {
-				that.init.photoid = response.id;
-				that.init.debug == true && console_log( response );
-				if( typeof nextFunc != 'undefined' && typeof nextFunc == 'function' ) { nextFunc(response); }
-			}else{
-				if( typeof closeFunc != 'undefined' && typeof closeFunc == 'function' ) { closeFunc(response); }
-				that.init.debug == true && console_log( that.init.errMsg.errMsg_unfeed );
-			}
-		});
-	}
-	,this.phototags = function(photoid,obj,nextFunc,closeFunc){
-		//{to:obj}
-		FB.api('/'+photoid+'/tags','post',{tags:obj},function(response){
-			if(response) {
-				if( typeof nextFunc != 'undefined' && typeof nextFunc == 'function' ) { nextFunc(response); }
-			}else{
-				if( typeof closeFunc != 'undefined' && typeof closeFunc == 'function' ) { closeFunc(response); }
-				that.init.debug == true && console_log( that.init.errMsg.errMsg_unfeed );
-			}
-		});
-	}
-	,this.checkin = function(obj,nextFunc,closeFunc,postid){
-		if(typeof postid=='undefined')postid='me';
-		FB.api('/'+postid+'/checkins', 'post',obj,function(response){
-			console.log(response)
-		})
-	}
-	//FB UI
-	,this.invite = function(obj,nextFunc,closeFunc){
-		/*var obj = {
-			message			:	that.init.share_i_mess,
-			title			:	that.init.share_i_tit,
-			max_recipients	:	that.init.share_i_mexuser
-		}*/
-		//if(typeof obj.max_recipients == 'undefined')obj.max_recipients = 5;
-		obj.method = 'apprequests';
-		FB.ui(obj,function(response){
-			if( response ) {
-				that.init.share_i_fds = response['to'];
-				if( that.init.share_i_fds.length >= that.init.share_i_num ){
-					if( typeof nextFunc != 'undefined' && typeof nextFunc == 'function' ) { nextFunc(response); }
-				}else{
-					alert('至少邀請'+that.init.share_i_num+'位好友才算完成喔！');
-				}
-			}else{
-				//選擇"取消"
-				if( typeof closeFunc != 'undefined' && typeof closeFunc == 'function' ) { closeFunc(response); }
-				that.init.debug == true && console_log( that.init.errMsg.errMsg_unfeed );
-			}
-		});
-	}
-	,this.ui = function(obj,nextFunc,closeFunc){
-		if(typeof obj.method == 'undefined')obj.method='feed';
-		FB.ui(obj,function(response){
-			that.init.debug == true && console_log( that.init.errMsg.errMsg_unfeed );
-			if (response && response.post_id) {
-				if( typeof nextFunc != 'undefined' && typeof nextFunc == 'function' ) { nextFunc(response); }
-			} else {
-				if( typeof closeFunc != 'undefined' && typeof closeFunc == 'function' ) { closeFunc(response); }
-			}
-		})
-	}
-}
-if(typeof console_log != 'function'){
-	var console_log = function(s){ window.console && console.log(s) }
-}
+    function fbapi() {
+      var k, nextFunc, setinit, _i, _len;
+
+      nextFunc = null;
+      setinit = function(init, k) {
+        if (typeof k === 'object') {
+          return $.extend(init, k);
+        } else if (typeof k === 'function') {
+          return nextFunc = k;
+        }
+      };
+      for (_i = 0, _len = arguments.length; _i < _len; _i++) {
+        k = arguments[_i];
+        setinit(this.init, k);
+      }
+      if ($('#fb-root').length === 0) {
+        $('body').prepend('<div id="fb-root"></div>');
+      }
+      $.ajaxSetup({
+        cache: !0
+      });
+      $.getScript('//connect.facebook.net/zh_TW/all.js', function() {
+        FB.init({
+          appId: root.fbapp.init.appid,
+          channelURL: root.fbapp.init.channelURL,
+          status: true,
+          cookie: true,
+          xfbml: true
+        });
+        return root.fbapp.getaccesstoken();
+      });
+      if (typeof nextFunc === 'function') {
+        nextFunc();
+      }
+    }
+
+    fbapi.prototype.getaccesstoken = function() {
+      var closeFunc, k, nextFunc, setinit, _i, _len;
+
+      nextFunc = null;
+      closeFunc = null;
+      setinit = function(init, k) {
+        if (typeof k === 'function' && nextFunc === null) {
+          return nextFunc = k;
+        } else if (typeof k === 'function' && nextFunc === 'function' && closeFunc === null) {
+          return closeFunc = k;
+        }
+      };
+      for (_i = 0, _len = arguments.length; _i < _len; _i++) {
+        k = arguments[_i];
+        setinit(this.init, k);
+      }
+      return FB.getLoginStatus(function(response) {
+        if (response.status === 'connected') {
+          root.fbapp.init.access_token = response.authResponse.accessToken;
+          root.fbapp.init.id = response.authResponse.userID;
+          root.fbapp.init.debug === true && console.log(response);
+          if (typeof nextFunc === 'function') {
+            return nextFunc(response);
+          }
+        } else if (response.status === 'not_authorized') {
+          root.fbapp.init.debug === true && console.log(root.fbapp.init.errMsg.errMsg_auth);
+          if (typeof closeFunc === 'function') {
+            return closeFunc(response);
+          }
+        } else {
+          root.fbapp.init.debug === true && console.log(root.fbapp.init.errMsg.errMsgUnLogin);
+          if (typeof closeFunc === 'function') {
+            return closeFunc(response);
+          }
+        }
+      });
+    };
+
+    fbapi.prototype.login = function() {
+      var closeFunc, k, nextFunc, setinit, _i, _len;
+
+      nextFunc = null;
+      closeFunc = null;
+      setinit = function(k) {
+        if (typeof k === 'function' && nextFunc === null) {
+          return nextFunc = k;
+        } else if (typeof k === 'function' && nextFunc === 'function' && closeFunc === null) {
+          return closeFunc = k;
+        }
+      };
+      for (_i = 0, _len = arguments.length; _i < _len; _i++) {
+        k = arguments[_i];
+        setinit(k);
+      }
+      return FB.login(function(response) {
+        if (response.authResponse) {
+          root.fbapp.init.access_token = response.authResponse.accessToken;
+          root.fbapp.init.id = response.authResponse.userID;
+          if (typeof nextFunc === 'function') {
+            return nextFunc(response);
+          }
+        } else {
+          root.fbapp.init.debug === true && console.log(root.fbapp.init.errMsg.errMsgUnLogin);
+          if (typeof closeFunc === 'function') {
+            return closeFunc(response);
+          }
+        }
+      }, {
+        scope: this.init.scope
+      });
+    };
+
+    fbapi.prototype.me = function() {
+      var closeFunc, k, nextFunc, setinit, _i, _len;
+
+      nextFunc = null;
+      closeFunc = null;
+      setinit = function(k) {
+        if (typeof k === 'function' && nextFunc === null) {
+          return nextFunc = k;
+        } else if (typeof k === 'function' && nextFunc === 'function' && closeFunc === null) {
+          return closeFunc = k;
+        }
+      };
+      for (_i = 0, _len = arguments.length; _i < _len; _i++) {
+        k = arguments[_i];
+        setinit(k);
+      }
+      return FB.api('/me/', function(response) {
+        root.fbapp.init.debug === true && console.log(response);
+        if (response) {
+          root.fbapp.init.me = response;
+          if (typeof nextFunc === 'function') {
+            return nextFunc(response);
+          }
+        } else {
+          if (typeof closeFunc === 'function') {
+            closeFunc(response);
+          }
+          return root.fbapp.init.debug === true && console.log(root.fbapp.init.errMsg.errMsg_auth);
+        }
+      });
+    };
+
+    fbapi.prototype.friends = function() {
+      var closeFunc, k, limit, nextFunc, setinit, _i, _len;
+
+      limit = null;
+      nextFunc = null;
+      closeFunc = null;
+      setinit = function(k) {
+        if (typeof k === 'number') {
+          return limit = k;
+        } else if (typeof k === 'function' && nextFunc === null) {
+          return nextFunc = k;
+        } else if (typeof k === 'function' && nextFunc === 'function' && closeFunc === null) {
+          return closeFunc = k;
+        }
+      };
+      for (_i = 0, _len = arguments.length; _i < _len; _i++) {
+        k = arguments[_i];
+        setinit(k);
+      }
+      return FB.api('/me/friends/' + (limit !== null ? "'?limit='" + limit : void 0), function(response) {
+        root.fbapp.init.debug === true && console.log(response);
+        if (response) {
+          root.fbapp.init.friends = response.data;
+          if (typeof nextFunc === 'function') {
+            return nextFunc(response);
+          }
+        } else {
+          root.fbapp.init.debug === true && console.log(root.fbapp.init.errMsg_auth);
+          if (typeof closeFunc === 'function') {
+            return closeFunc(response);
+          }
+        }
+      });
+    };
+
+    fbapi.prototype.ui = function() {
+      var closeFunc, k, nextFunc, obj, setinit, _i, _len;
+
+      obj = {};
+      nextFunc = null;
+      closeFunc = null;
+      setinit = function(k) {
+        if (typeof k === 'object') {
+          return obj = k;
+        } else if (typeof k === 'function' && nextFunc === null) {
+          return nextFunc = k;
+        } else if (typeof k === 'function' && nextFunc === 'function' && closeFunc === null) {
+          return closeFunc = k;
+        }
+      };
+      for (_i = 0, _len = arguments.length; _i < _len; _i++) {
+        k = arguments[_i];
+        setinit(k);
+      }
+      if (obj.method != null) {
+        obj.method = 'feed';
+      }
+      return FB.ui(obj, function(response) {
+        if (response && response.post_id) {
+          if (typeof nextFunc === 'function') {
+            return nextFunc(response);
+          }
+        } else {
+          root.fbapp.init.debug === true && console.log(root.fbapp.init.errMsg.errMsg_unfeed);
+          if (typeof closeFunc === 'function') {
+            return closeFunc(response);
+          }
+        }
+      });
+    };
+
+    fbapi.prototype.fans = function() {
+      var closeFunc, k, nextFunc, pageid, setinit, _i, _len;
+
+      pageid = root.fbapp.init.pageid;
+      nextFunc = null;
+      closeFunc = null;
+      setinit = function(k) {
+        if (typeof k === 'string') {
+          return pageid = k;
+        } else if (typeof k === 'function' && nextFunc === null) {
+          return nextFunc = k;
+        } else if (typeof k === 'function' && nextFunc === 'function' && closeFunc === null) {
+          return closeFunc = k;
+        }
+      };
+      for (_i = 0, _len = arguments.length; _i < _len; _i++) {
+        k = arguments[_i];
+        setinit(k);
+      }
+      if (pageid === null) {
+        return false;
+      }
+      return FB.api("/me/likes/" + pageid, function(response) {
+        root.fbapp.init.debug === true && console.log(response);
+        if (response.data.length > 0) {
+          if (typeof nextFunc === 'function') {
+            return nextFunc(response);
+          }
+        } else {
+          root.fbapp.init.debug === true && console.log(root.fbapp.init.errMsg.errMsgNotFans);
+          if (typeof closeFunc === 'function') {
+            return closeFunc(response);
+          }
+        }
+      });
+    };
+
+    return fbapi;
+
+  })();
+
+}).call(this);
