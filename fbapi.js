@@ -12,6 +12,7 @@
     fbapi.prototype.init = {
       debug: false,
       id: '',
+      language: 'zh_TW',
       me: [],
       friends: [],
       channelURL: '',
@@ -49,7 +50,7 @@
       $.ajaxSetup({
         cache: !0
       });
-      $.getScript('//connect.facebook.net/zh_TW/all.js', function() {
+      $.getScript('//connect.facebook.net/'+ root.fbapp.init.language +'/all.js', function() {
         FB.init({
           appId: root.fbapp.init.appid,
           channelURL: root.fbapp.init.channelURL,
