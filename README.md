@@ -15,7 +15,7 @@ fbapp = new fbapi({
 });
 ```
 
-## call login and authorization app
+## login and authorization app
 ```
 fbapp.login(function(r) {
 	console.log('login');
