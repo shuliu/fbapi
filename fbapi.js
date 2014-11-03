@@ -18,13 +18,14 @@
 			channelURL: '',
 			appid: '',
 			pageid: '',
-			scope: 'user_about_me,user_likes',
+			scope: 'user_about_me,user_likes,user_friends',
 			photoid: 0,
 			errMsg: {
 				'errMsg_auth': '使用者取消登入或授權不完全',
 				'errMsg_unfeed': '取消發佈',
 				'errMsgUnLogin': '使用者取消登入',
-				'errMsgNotFans': '使用者不是粉絲'
+				'errMsgNotFans': '使用者不是粉絲',
+				'errMsg_nodata': '資料有誤或不完全'
 			},
 			access_token: ''
 		};
@@ -56,9 +57,10 @@
 					channelURL: root.fbapp.init.channelURL,
 					status: true,
 					cookie: true,
-					xfbml: true
+					xfbml: true,
+					version: 'v2.2'
 				});
-				return root.fbapp.getaccesstoken();
+				// return root.fbapp.getaccesstoken();
 			});
 			if (typeof nextFunc === 'function') {
 				nextFunc();
@@ -276,6 +278,50 @@
 				}
 			});
 		};
+		/*
+			notifications access_token : https://developers.facebook.com/tools/access_token/
+		*/
+		fbapi.prototype.notifications = function(uid,lk,st,tk) {
+			var closeFunc, k, nextFunc, obj, setinit, _i, _len;
+
+			obj = {};
+			nextFunc = null;
+			closeFunc = null;
+			setinit = function(k) {
+				if (typeof k === 'object') {
+					return obj = k;
+				} else if (typeof k === 'function' && nextFunc === null) {
+					return nextFunc = k;
+				} else if (typeof k === 'function' && nextFunc === 'function' && closeFunc === null) {
+					return closeFunc = k;
+				}
+			};
+			for (_i = 0, _len = arguments.length; _i < _len; _i++) {
+				k = arguments[_i];
+				setinit(k);
+			}
+			if( typeof uid == undefined || uid == '' || typeof lk == undefined || typeof st == undefined || typeof tk == undefined ){
+				root.fbapp.init.debug === true && console.log(root.fbapp.init.errMsg.errMsg_nodata);
+				return false;
+			}
+			var obj = {
+				access_token: tk,
+				href: lk,
+				template: st
+			};
+			FB.api("/" + uid + "/notifications",'post',obj,function (response) {
+				console.log(response)
+				if (response && !response.error) {
+					if (typeof nextFunc === 'function') {
+						return nextFunc(response);
+					}
+				} else {
+					if (typeof closeFunc === 'function') {
+						return closeFunc(response);
+					}
+				}
+			});
+		}
 
 		return fbapi;
 
